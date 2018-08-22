@@ -1,9 +1,7 @@
-/* FOR LOCAL DEV AND TESTING */
+// /* FOR LOCAL DEV AND TESTING */
 
 
 // 'use strict';
-
-// //
 
 // // setup auth and run locally
 // // https://docs.aws.amazon.com/sdk-for-javascript/v2/developer-guide/global-config-object.html
@@ -12,8 +10,8 @@
 
 // const config = new AWS.Config({
 //   credentials: new AWS.Credentials({
-//     accessKeyId: 'KEY_HERE',
-//     secretAccessKey: 'SECRET_HERE'
+//     accessKeyId: 'KEY',
+//     secretAccessKey: 'SECRET'
 //   }), 
 //   region: 'us-east-1'
 // });
@@ -24,8 +22,8 @@
 
 // const Sharp = require('sharp');
 
-// const BUCKET = 'neighbor-compressed-photos-dev';
-// const URL = 'http://neighbor-compressed-photos-dev.s3-website-us-east-1.amazonaws.com';
+// const BUCKET = 'neighbor-listing-photos-development';
+// const URL = 'http://neighbor-listing-photos-development.s3-website-us-east-1.amazonaws.com';
 // const ALLOWED_DIMENSIONS = new Set();
 
 // if (process.env.ALLOWED_DIMENSIONS) {
@@ -33,7 +31,7 @@
 //   dimensions.forEach((dimension) => ALLOWED_DIMENSIONS.add(dimension));
 // }
 
-// const dynamicSizingCompression = (data) => {
+// const dynamicSizingCompression = (data, width, height) => {
 //   const sizeInKB = data.ContentLength / 1024;
   
 //   let jpegCompressOptions = { 
@@ -42,7 +40,7 @@
 //   }
 
 //   if (height < 100 || width < 100) {
-//     jpegCompressOptions["progressive"] = false;
+//     jpegCompressOptions["progressive"] = false; // ineffecient for smaller photos
 //   }
 
 //   if (sizeInKB <= 100) { // don't compress
@@ -61,32 +59,16 @@
 //   }
 // }
 
-// const compressionTester = () => {
-//   const firstArg = process.argv[2];
-//   if (!firstArg) {
-//     console.error("Pass in the key of the image")
-//     return;
-//   }
-
-//   console.log('fetching...');
-//   S3.getObject({Bucket: BUCKET, Key: firstArg}).promise()
-//   .then(dynamicSizingCompression)
-//   .then(buffer => S3.putObject({
-//       Body: buffer,
-//       Bucket: BUCKET,
-//       ContentType: 'image/jpeg',
-//       Key: 'test/' + firstArg,
-//     }).promise()
-//   )
-// }
-
-// exports.handler = function(event, context, callback) {
+// const handler = function(event, context, callback) {
 //   const key = event.queryStringParameters.key;
-//   const match = key.match(/((\d+)x(\d+))\/(.*)/);
-//   const dimensions = match[1];
-//   const width = parseInt(match[2], 10);
-//   const height = parseInt(match[3], 10);
-//   const originalKey = match[4];
+//   const match = key.match(/(.*)\/((\d+)x(\d+))\/(.*)/);
+//   const dimensions = match[2];
+//   const width = parseInt(match[3], 10);
+//   const height = parseInt(match[4], 10);
+//   const filename = match[5];
+//   const path = match[1];
+
+//   const originalKey = path + '/' + filename;
 
 //   if(ALLOWED_DIMENSIONS.size > 0 && !ALLOWED_DIMENSIONS.has(dimensions)) {
 //      callback(null, {
@@ -98,13 +80,9 @@
 //   }
 
 //   S3.getObject({Bucket: BUCKET, Key: originalKey}).promise()
-//     .then(data => Sharp(data.Body)
-//       .resize(width, height)
-//       .max()
-//       .withoutEnlargement()
-//       .jpeg({ "quality": 75, "progressive": true })
-//       .toBuffer()
-//     )
+//     .then((data) => { 
+//       return dynamicSizingCompression(data, width, height);
+//     })
 //     .then(buffer => S3.putObject({
 //         Body: buffer,
 //         Bucket: BUCKET,
@@ -114,11 +92,29 @@
 //     )
 //     .then(() => callback(null, {
 //         statusCode: '301',
-//         headers: {'location': `${URL}/${key}`},
+//         headers: {'Location': `${URL}/${key}`},
 //         body: '',
 //       })
 //     )
 //     .catch(err => callback(err))
-// }
+// };
 
-// compressionTester();
+// // exports.handler = handler;
+
+// // const handler = function(key, callback) { //test
+// // const key = '1/2/40x40/blue_marble.jpg';
+// // const callback = () => console.log('callback');
+// // handler(key, callback);
+
+// S3.getObject({Bucket: BUCKET, Key: '1/2/blue_marble.jpg'}).promise()
+//   .then((data) => { 
+//     return Sharp(data.Body)
+//     .toBuffer()
+//   })
+//   .then(buffer => S3.putObject({
+//       Body: buffer,
+//       Bucket: 'neighbor-user-photos-production',
+//       ContentType: 'image/jpeg',
+//       Key: '1/2/blue_marble.jpg',
+//     }).promise()
+//   )

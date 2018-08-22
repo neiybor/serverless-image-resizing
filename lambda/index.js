@@ -43,13 +43,16 @@ const dynamicSizingCompression = (data, width, height) => {
   }
 }
 
-exports.handler = function(event, context, callback) {
+const handler = function(event, context, callback) {
   const key = event.queryStringParameters.key;
-  const match = key.match(/((\d+)x(\d+))\/(.*)/);
-  const dimensions = match[1];
-  const width = parseInt(match[2], 10);
-  const height = parseInt(match[3], 10);
-  const originalKey = match[4];
+  const match = key.match(/(.*)\/((\d+)x(\d+))\/(.*)/);
+  const dimensions = match[2];
+  const width = parseInt(match[3], 10);
+  const height = parseInt(match[4], 10);
+  const filename = match[5];
+  const path = match[1];
+
+  const originalKey = path + '/' + filename;
 
   if(ALLOWED_DIMENSIONS.size > 0 && !ALLOWED_DIMENSIONS.has(dimensions)) {
      callback(null, {
@@ -78,4 +81,6 @@ exports.handler = function(event, context, callback) {
       })
     )
     .catch(err => callback(err))
-}
+};
+
+exports.handler = handler;
