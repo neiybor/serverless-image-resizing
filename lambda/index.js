@@ -15,6 +15,34 @@ if (process.env.ALLOWED_DIMENSIONS) {
   dimensions.forEach((dimension) => ALLOWED_DIMENSIONS.add(dimension));
 }
 
+const dynamicSizingCompression = (data, width, height) => {
+  const sizeInKB = data.ContentLength / 1024;
+  
+  let jpegCompressOptions = { 
+    "quality": 75, 
+    "progressive": true 
+  }
+
+  if (height < 100 || width < 100) {
+    jpegCompressOptions["progressive"] = false; // ineffecient for smaller photos
+  }
+
+  if (sizeInKB <= 100) { // don't compress
+    return Sharp(data.Body)
+      .resize(width, height)
+      .max()
+      .withoutEnlargement()
+      .toBuffer()
+  } else {
+    return Sharp(data.Body)
+      .resize(width, height)
+      .max()
+      .withoutEnlargement()
+      .jpeg(jpegCompressOptions)
+      .toBuffer()
+  }
+}
+
 exports.handler = function(event, context, callback) {
   const key = event.queryStringParameters.key;
   const match = key.match(/((\d+)x(\d+))\/(.*)/);
@@ -33,15 +61,13 @@ exports.handler = function(event, context, callback) {
   }
 
   S3.getObject({Bucket: BUCKET, Key: originalKey}).promise()
-    .then(data => Sharp(data.Body)
-      .resize(width, height)
-      .toFormat('png')
-      .toBuffer()
-    )
+    .then((data) => { 
+      return dynamicSizingCompression(data, width, height);
+    })
     .then(buffer => S3.putObject({
         Body: buffer,
         Bucket: BUCKET,
-        ContentType: 'image/png',
+        ContentType: 'image/jpeg',
         Key: key,
       }).promise()
     )
