@@ -19,7 +19,7 @@ const dynamicSizingCompression = (data, width, height) => {
   const sizeInKB = data.ContentLength / 1024;
   
   let jpegCompressOptions = { 
-    "quality": 75, 
+    "quality": 85, 
     "progressive": true 
   }
 
